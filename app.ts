@@ -1,0 +1,120 @@
+import express from 'express';
+import cors from "cors";
+import http from "http";
+import "dotenv/config";
+import {Server} from "socket.io";
+import workers from "./utils/mediasoup-worker";
+import {callRooms} from "./utils/global_vars";
+import {callRoom} from "./utils/chatRoomUtils";
+import {connect} from "./utils/websocket-controller";
+import {types} from "mediasoup";
+
+
+const app = express();
+let serverWorkers: types.Worker[] = []; // worker processes running on server
+
+
+// add allowed origin cors
+console.log("THIS IS CORS", process.env.UI_BOUNDARY);
+app.use(cors({
+    origin: process.env.UI_BOUNDARY,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
+}));
+app.use(express.json());
+
+app.post("/call/create", async (req, res) => {
+    const {callId}: {callId: string} = req.body;
+    const selectedWorkerIndex = 0; //an algorithm to select the worker to be used
+    const worker = serverWorkers[selectedWorkerIndex];
+    if (worker) {
+        const callObject = new callRoom(worker)
+        await callObject.initialize(); // creating chat router
+        callRooms.set(callId, callObject);
+        console.log("call creation successful");
+        res.json({
+            message: "call creation successful",
+            callId
+        });
+    }
+    else{
+        res.json({message: "call creation failed. Could not find ready worker"});
+    }
+})
+
+
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: process.env.UI_BOUNDARY,
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
+
+
+// Websocket events
+io.on("connection", async (socket)=>{
+    const roomId = socket.handshake.auth.roomId;
+    if (roomId){
+        console.log(roomId);
+        const callObject = callRooms.get(roomId);
+        if (callObject){
+            await callObject.connect(socket);
+            //client socket events
+            socket.on('getRouterRTPCapabilities', (callBack)=>{
+                callBack(callObject.getRouterRTPCapabilities());
+            });
+
+            socket.on('requestTransportCreation', async(callBack)=>{
+                console.log("requestTransportCreation")
+                const transportParams = await callObject.createTransports(socket);
+                callBack(transportParams); // collect on the client side
+            });
+
+            socket.on('connectSenderTransport', async (DTLSParameters, callBack)=>{
+                console.log("connectSenderTransport")
+                await callObject.connectSendTransport(socket, DTLSParameters);
+            });
+
+            socket.on('connectRecvTransport', async (DTLSParameters, callBack)=>{
+                console.log("connectRecvTransport")
+                await callObject.connectRecvTransport(socket, DTLSParameters);
+            });
+
+            socket.on('transportProduce', async ({ kind, rtpParameters, appData })=>{
+                console.log("transportProduce")
+                await callObject.clientProduced(socket, {kind, rtpParameters, appData});
+            });
+
+            socket.on('clientConsume', async ({ producerId, rtpCapabilities }, callBack)=>{
+                console.log("clientConsume")
+                const consumptionParams = await callObject.consume(socket, {producerId, rtpCapabilities});
+                callBack(consumptionParams);
+            });
+        }
+        else{
+            console.error("Room not found");
+        }
+    }
+    else{
+        console.log("Invalid room id")
+    }
+
+
+});
+
+(async()=>{
+    serverWorkers = await workers;
+    // if client request upgrade to websocket
+    server.on("upgrade", (request, socket, head) => {
+        const {url} = request;
+        console.log("upgrade requested at ", url)
+    });
+
+
+    server.listen(4000, async () => {
+        console.log("Server running on http://localhost:4000", process.env.UI_BOUNDARY);
+    });
+})()
+
