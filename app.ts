@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from "cors";
-import http from "http";
+import https from "https";
 import "dotenv/config";
 import {Server} from "socket.io";
 import workers from "./utils/mediasoup-worker";
@@ -43,7 +43,7 @@ app.post("/call/create", async (req, res) => {
 })
 
 
-const server = http.createServer(app);
+const server = https.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: process.env.UI_BOUNDARY,
@@ -116,7 +116,7 @@ io.on("connection", async (socket)=>{
     });
 
 
-    server.listen(4000, async () => {
+    server.listen(443, async () => {
         console.log("Server running on http://localhost:4000", process.env.UI_BOUNDARY);
     });
 })()

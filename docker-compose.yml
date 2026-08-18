@@ -4,11 +4,12 @@ services:
     container_name: bim_media_soup
     restart: "unless-stopped"
     ports:
-      - "4000:4000/tcp"
+      - "443:443/tcp"
       - "20000:20000/udp"
       - "40000-40100:40000-40100/udp"
     volumes:
       - .:/app
       - /app/node_modules
+      - ./certs:/app/certs:ro
     env_file:
       - .env
