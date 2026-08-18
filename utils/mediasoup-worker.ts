@@ -11,6 +11,7 @@ const createWorkers = async() => {
     for (let i = 0; i < parseInt(process.env.NUMBER_OF_WORKERS||"1"); i++) {
         const worker = await createWorker({
             logLevel: "debug",
+
         });
         worker.on('died', () => {
             console.error(`mediasoup Worker ${i} died — must restart process`);

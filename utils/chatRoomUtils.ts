@@ -31,8 +31,8 @@ export class callRoom {
     router: types.Router | undefined
     participants: {
         socketId: string;
-        consumingTransport?: types.Transport;
-        producingTransport?: types.Transport;
+        consumingTransport?:  types.WebRtcTransport<types.AppData>;
+        producingTransport?:  types.WebRtcTransport<types.AppData>;
         producers: Map<string, types.Producer>;
         consumers: Map<string, types.Consumer>
     }[]
@@ -70,16 +70,48 @@ export class callRoom {
     async createTransports(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>){
         if (this.router){
             const producingTransport = await this.router.createWebRtcTransport({
-                listenIps: [{ ip: '0.0.0.0', announcedIp: process.env.PUBLIC_IP||"127.0.0.1" }],
-                enableUdp: true,
-                enableTcp: true,
-                preferUdp: true,
+                listenInfos: [
+                    {
+                        protocol: 'udp',
+                        ip: '0.0.0.0',
+                        announcedAddress: process.env.PUBLIC_IP!,
+                        portRange: {
+                            min: 40000,
+                            max: 40100,
+                        },
+                    },
+                    {
+                        protocol: 'tcp',
+                        ip: '0.0.0.0',
+                        announcedAddress: process.env.PUBLIC_IP!,
+                        portRange: {
+                            min: 40101,
+                            max: 40200,
+                        },
+                    },
+                ],
             });
             const consumingTransport = await this.router.createWebRtcTransport({
-                listenIps: [{ ip: '0.0.0.0', announcedIp: process.env.PUBLIC_IP||"127.0.0.1" }],
-                enableUdp: true,
-                enableTcp: true,
-                preferUdp: true,
+                listenInfos: [
+                    {
+                        protocol: 'udp',
+                        ip: '0.0.0.0',
+                        announcedAddress: process.env.PUBLIC_IP!,
+                        portRange: {
+                            min: 40000,
+                            max: 40100,
+                        },
+                    },
+                    {
+                        protocol: 'tcp',
+                        ip: '0.0.0.0',
+                        announcedAddress: process.env.PUBLIC_IP!,
+                        portRange: {
+                            min: 40101,
+                            max: 40200,
+                        },
+                    },
+                ],
             });
 
             producingTransport.on('iceselectedtuplechange', (state)=>console.log("$$$$$$$$$$$$ICE selected producing transport state changed ", state));
@@ -119,10 +151,12 @@ export class callRoom {
         const participant = this.participants.find(elt => elt.socketId === socket.id);
         if (participant && participant.producingTransport) {
             const statsBefore = await participant.producingTransport.getStats();
-            console.log("$$$$$$$$$$$", statsBefore)
+            console.log("$$$$$$$$$$$ status before", statsBefore)
+
             await participant.producingTransport.connect({dtlsParameters: senderTransportDTLSParameters});
             const statsAfter = await participant.producingTransport.getStats();
-            console.log("$$$$$$$$$$$", statsAfter)
+            console.log("$$$$$$$$$$$ status after", statsAfter);
+            console.log("ice candidates ", participant.producingTransport.iceCandidates);
             return {message: "connected successfully."};
         }
         else{
