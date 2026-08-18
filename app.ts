@@ -12,8 +12,8 @@ import * as fs from "node:fs";
 
 
 const options = {
-    key: fs.readFileSync("app/certs/key.pem"),
-    cert: fs.readFileSync("app/certs/cert.pem"),
+    key: fs.readFileSync("/app/certs/key.pem"),
+    cert: fs.readFileSync("/app/certs/cert.pem"),
 };
 const app = express();
 let serverWorkers: types.Worker[] = []; // worker processes running on server
