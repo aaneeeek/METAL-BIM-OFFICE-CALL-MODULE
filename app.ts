@@ -74,21 +74,25 @@ io.on("connection", async (socket)=>{
 
             socket.on('connectSenderTransport', async (DTLSParameters, callBack)=>{
                 console.log("connectSenderTransport")
-                await callObject.connectSendTransport(socket, DTLSParameters);
+                const result = await callObject.connectSendTransport(socket, DTLSParameters);
+                callBack(result);
             });
 
             socket.on('connectRecvTransport', async (DTLSParameters, callBack)=>{
                 console.log("connectRecvTransport")
-                await callObject.connectRecvTransport(socket, DTLSParameters);
+                const result = await callObject.connectRecvTransport(socket, DTLSParameters);
+                callBack(result);
+                callObject.configureNewSockets(socket); //catch up in case some clients already produced before it connected
             });
 
-            socket.on('transportProduce', async ({ kind, rtpParameters, appData })=>{
-                console.log("transportProduce")
-                await callObject.clientProduced(socket, {kind, rtpParameters, appData});
+            socket.on('transportProduce', async ({ kind, rtpParameters, appData }, callBack)=>{
+                console.log("transportProduce");
+                const result = await callObject.clientProduced(socket, {kind, rtpParameters, appData});
+                callBack(result);
             });
 
             socket.on('clientConsume', async ({ producerId, rtpCapabilities }, callBack)=>{
-                console.log("clientConsume")
+                console.log("clientConsume");
                 const consumptionParams = await callObject.consume(socket, {producerId, rtpCapabilities});
                 callBack(consumptionParams);
             });
@@ -100,7 +104,6 @@ io.on("connection", async (socket)=>{
     else{
         console.log("Invalid room id")
     }
-
 
 });
 

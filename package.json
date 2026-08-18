@@ -8,6 +8,7 @@
     "start": "node ./bin/www"
   },
   "dependencies": {
+    "@esbuild/linux-x64": "^0.28.2",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
     "dotenv": "^17.4.2",

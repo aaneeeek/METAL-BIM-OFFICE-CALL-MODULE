@@ -34,6 +34,7 @@ export class callRoom {
         consumingTransport?: types.Transport;
         producingTransport?: types.Transport;
         producers: Map<string, types.Producer>;
+        consumers: Map<string, types.Consumer>
     }[]
 
     constructor(worker: types.Worker) {
@@ -45,8 +46,20 @@ export class callRoom {
         this.router = await this.worker.createRouter({ mediaCodecs });
     }
 
+    async configureNewSockets(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>){
+        // this method is to make a new connection entering the chat/call room to catch up with the others
+        // this method can only be called after the receiver transports for a socket are already set and connected
+        this.participants.forEach(async (participant, index)=>{
+            if (participant.socketId !== socket.id){
+                for (const [key, value] of participant.producers){
+                    socket.emit("newProducer", {producerId: key});
+                }
+            }
+        })
+    }
+
     async connect(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) {
-        this.participants.push({ socketId: socket.id, producers: new Map() }); //save client socket
+        this.participants.push({ socketId: socket.id, producers: new Map(), consumers: new Map() }); //save client socket
 
     }
 
@@ -68,6 +81,14 @@ export class callRoom {
                 enableTcp: true,
                 preferUdp: true,
             });
+
+            producingTransport.on('iceselectedtuplechange', (state)=>console.log("$$$$$$$$$$$$ICE selected producing transport state changed ", state));
+            producingTransport.on('icestatechange', (state)=>console.log("$$$$$$$$$$$$ICE producing transport state changed ", state));
+            producingTransport.on('dtlsstatechange', (state)=>console.log("$$$$$$$$$$$$DTLS producing transport state changed ", state));
+
+            consumingTransport.on('icestatechange', (state)=>console.log("$$$$$$$$$$$$ICE consuming transport state changed ", state));
+            consumingTransport.on('dtlsstatechange', (state)=>console.log("$$$$$$$$$$$$DTLS consuming transport state changed ", state));
+
             const participant = this.participants.find(elt => elt.socketId === socket.id);
             if (participant) {
                 participant.producingTransport = producingTransport;
@@ -97,7 +118,11 @@ export class callRoom {
     async connectSendTransport(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>, senderTransportDTLSParameters: types.DtlsParameters ){
         const participant = this.participants.find(elt => elt.socketId === socket.id);
         if (participant && participant.producingTransport) {
+            const statsBefore = await participant.producingTransport.getStats();
+            console.log("$$$$$$$$$$$", statsBefore)
             await participant.producingTransport.connect({dtlsParameters: senderTransportDTLSParameters});
+            const statsAfter = await participant.producingTransport.getStats();
+            console.log("$$$$$$$$$$$", statsAfter)
             return {message: "connected successfully."};
         }
         else{
@@ -123,27 +148,42 @@ export class callRoom {
         if (participant && participant.producingTransport) {
             const producer = await participant.producingTransport.produce({kind, rtpParameters, appData});
             participant.producers.set(producer.id, producer);
-            await socket.broadcast.emitWithAck("newProducer", {producerId: producer.id});
+            socket.broadcast.emit("newProducer", {producerId: producer.id});
             console.log("Propagated Producer Id", producer.id);
+            return {id: producer.id}
         }
         else{
             console.log("Matching transport not found");
+            return {id: null}
         }
     }
+
 
     async consume(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>, { producerId, rtpCapabilities }: {producerId: string, rtpCapabilities: types.RtpCapabilities}){
         const participant = this.participants.find(elt => elt.socketId === socket.id);
         if (participant && this.router && this.router.canConsume({ producerId, rtpCapabilities })){
             if (participant.consumingTransport){
-                const consumer = await participant.consumingTransport.consume({
-                    producerId, rtpCapabilities, paused: false,
-                });
-                return {
-                    id: consumer.id,
-                    producerId,
-                    kind: consumer.kind,
-                    rtpParameters: consumer.rtpParameters,
-                };
+                let alreadyConsumed = false;
+                for (const [key, value] of participant.producers){
+                    if (key === producerId){
+                        alreadyConsumed = true;
+                    }
+                }
+                if (! alreadyConsumed){
+                    const consumer = await participant.consumingTransport.consume({
+                        producerId, rtpCapabilities, paused: false,
+                    });
+                    participant.consumers.set(consumer.id, consumer);
+                    return {
+                        id: consumer.id,
+                        producerId,
+                        kind: consumer.kind,
+                        rtpParameters: consumer.rtpParameters,
+                    };
+                }
+                console.log("Already consumed this producer");
+                return {error: "Already consumed this produce"}
+                
             }
             else{
                 console.log(`Participant transport not found`);
