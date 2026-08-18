@@ -12,15 +12,14 @@ import * as fs from "node:fs";
 
 
 const options = {
-    key: fs.readFileSync("/certs/key.pem"),
-    cert: fs.readFileSync("/certs/cert.pem"),
+    key: fs.readFileSync("app/certs/key.pem"),
+    cert: fs.readFileSync("app/certs/cert.pem"),
 };
 const app = express();
 let serverWorkers: types.Worker[] = []; // worker processes running on server
 
 
 // add allowed origin cors
-console.log("THIS IS CORS", process.env.UI_BOUNDARY);
 app.use(cors({
     origin: process.env.UI_BOUNDARY,
     methods: ["GET", "POST", "PUT", "DELETE"],
@@ -122,7 +121,7 @@ io.on("connection", async (socket)=>{
 
 
     server.listen(443, async () => {
-        console.log("Server running on http://localhost:4000", process.env.UI_BOUNDARY);
+        console.log("Server running on port 443 with allowed cors origin ", process.env.UI_BOUNDARY);
     });
 })()
 
