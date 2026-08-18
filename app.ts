@@ -8,8 +8,13 @@ import {callRooms} from "./utils/global_vars";
 import {callRoom} from "./utils/chatRoomUtils";
 import {connect} from "./utils/websocket-controller";
 import {types} from "mediasoup";
+import * as fs from "node:fs";
 
 
+const options = {
+    key: fs.readFileSync("/certs/key.pem"),
+    cert: fs.readFileSync("/certs/cert.pem"),
+};
 const app = express();
 let serverWorkers: types.Worker[] = []; // worker processes running on server
 
@@ -43,7 +48,7 @@ app.post("/call/create", async (req, res) => {
 })
 
 
-const server = https.createServer(app);
+const server = https.createServer(options,app);
 const io = new Server(server, {
     cors: {
         origin: process.env.UI_BOUNDARY,
