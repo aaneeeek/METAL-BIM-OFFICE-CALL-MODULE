@@ -92,11 +92,18 @@ io.on("connection", async (socket)=>{
                 callBack(result);
             });
 
-            socket.on('clientConsume', async ({ producerId, rtpCapabilities }, callBack)=>{
+            socket.on('clientConsume', async ({ producerId, rtpCapabilities }, callBack, producerSocketId)=>{
                 console.log("clientConsume");
                 const consumptionParams = await callObject.consume(socket, {producerId, rtpCapabilities});
                 callBack(consumptionParams);
             });
+
+            socket.on("disconnect", ()=>{
+                const index = callObject.participants.findIndex(elt=> elt.socketId === socket.id);
+                if (index && index >= 0) {
+                    callObject.participants.splice(index, 1);
+                }
+            })
         }
         else{
             console.error("Room not found");
