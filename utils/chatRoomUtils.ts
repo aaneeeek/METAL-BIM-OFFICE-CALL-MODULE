@@ -195,9 +195,10 @@ export class callRoom {
         if (participant && this.router && this.router.canConsume({ producerId, rtpCapabilities })){
             if (participant.consumingTransport){
                 let alreadyConsumed = false;
-                for (const [key, value] of participant.producers){
-                    if (key === producerId){
+                for (const [key, value] of participant.consumers){
+                    if (value.producerId === producerId){
                         alreadyConsumed = true;
+                        break;
                     }
                 }
                 if (! alreadyConsumed){

@@ -84,7 +84,7 @@ io.on("connection", async (socket)=>{
                 console.log("connectRecvTransport")
                 const result = await callObject.connectRecvTransport(socket, DTLSParameters);
                 callBack(result);
-                // await callObject.configureNewSockets(socket); //catch up in case some clients already produced before it connected
+                await callObject.configureNewSockets(socket); //catch up in case some clients already produced before it connected
             });
 
             socket.on('transportProduce', async ({ kind, rtpParameters, appData }, callBack)=>{
