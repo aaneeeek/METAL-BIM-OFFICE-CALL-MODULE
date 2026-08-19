@@ -27,6 +27,7 @@ const mediaCodecs: types.RouterRtpCodecCapability[] =
 
 
 export class callRoom {
+    roomId: string;
     worker: types.Worker
     router: types.Router | undefined
     participants: {
@@ -37,9 +38,10 @@ export class callRoom {
         consumers: Map<string, types.Consumer>
     }[]
 
-    constructor(worker: types.Worker) {
+    constructor(worker: types.Worker, roomId: string) {
         this.participants = [];
         this.worker = worker;
+        this.roomId = roomId;
     }
 
     async initialize(){
@@ -61,7 +63,6 @@ export class callRoom {
 
     async connect(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) {
         this.participants.push({ socketId: socket.id, producers: new Map(), consumers: new Map() }); //save client socket
-
     }
 
     getRouterRTPCapabilities(){
@@ -183,7 +184,7 @@ export class callRoom {
         if (participant && participant.producingTransport) {
             const producer = await participant.producingTransport.produce({kind, rtpParameters, appData});
             participant.producers.set(producer.id, producer);
-            socket.broadcast.emit("newProducer", {producerId: producer.id, socketId: socket.id});
+            socket.to(this.roomId).emit("newProducer", {producerId: producer.id, socketId: socket.id});
             console.log("Propagated Producer Id", producer.id);
             return {id: producer.id}
         }

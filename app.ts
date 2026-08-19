@@ -31,7 +31,7 @@ app.post("/call/create", async (req, res) => {
     const selectedWorkerIndex = 0; //an algorithm to select the worker to be used
     const worker = serverWorkers[selectedWorkerIndex];
     if (worker) {
-        const callObject = new callRoom(worker)
+        const callObject = new callRoom(worker, callId)
         await callObject.initialize(); // creating chat router
         callRooms.set(callId, callObject);
         console.log("call creation successful");
@@ -62,6 +62,7 @@ io.on("connection", async (socket)=>{
         const callObject = callRooms.get(roomId);
         if (callObject){
             await callObject.connect(socket);
+            socket.join(roomId);
             //client socket events
             socket.on('getRouterRTPCapabilities', (callBack)=>{
                 callBack(callObject.getRouterRTPCapabilities());
@@ -102,6 +103,7 @@ io.on("connection", async (socket)=>{
                 const index = callObject.participants.findIndex(elt=> elt.socketId === socket.id);
                 if (index && index >= 0) {
                     callObject.participants.splice(index, 1);
+                    io.to(roomId).emit("socketdisconnected", socket.id);
                 }
             })
         }
