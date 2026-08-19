@@ -49,13 +49,14 @@ export class callRoom {
     async configureNewSockets(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>){
         // this method is to make a new connection entering the chat/call room to catch up with the others
         // this method can only be called after the receiver transports for a socket are already set and connected
-        this.participants.forEach(async (participant, index)=>{
+        for (const participant of this.participants) {
+            const index = this.participants.indexOf(participant);
             if (participant.socketId !== socket.id){
                 for (const [key, value] of participant.producers){
-                    socket.emit("newProducer", {producerId: key});
+                    socket.emit("newProducer", {producerId: key, socketId: participant.socketId});
                 }
             }
-        })
+        }
     }
 
     async connect(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>) {
