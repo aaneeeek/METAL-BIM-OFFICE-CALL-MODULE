@@ -182,7 +182,7 @@ export class callRoom {
         if (participant && participant.producingTransport) {
             const producer = await participant.producingTransport.produce({kind, rtpParameters, appData});
             participant.producers.set(producer.id, producer);
-            socket.broadcast.emit("newProducer", {producerId: producer.id});
+            socket.broadcast.emit("newProducer", {producerId: producer.id, socketId: socket.id});
             console.log("Propagated Producer Id", producer.id);
             return {id: producer.id}
         }
