@@ -56,6 +56,7 @@ export class callRoom {
             const index = this.participants.indexOf(participant);
             if (participant.socketId !== socket.id){
                 for (const [key, value] of participant.producers){
+                    console.log("found new producer")
                     socket.emit("newProducer", {producerId: key, socketId: participant.socketId});
                 }
             }
