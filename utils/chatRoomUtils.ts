@@ -51,6 +51,7 @@ export class callRoom {
     async configureNewSockets(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>){
         // this method is to make a new connection entering the chat/call room to catch up with the others
         // this method can only be called after the receiver transports for a socket are already set and connected
+        console.log("A new device joined -- configuration started")
         for (const participant of this.participants) {
             const index = this.participants.indexOf(participant);
             if (participant.socketId !== socket.id){
@@ -116,7 +117,6 @@ export class callRoom {
                 ],
             });
 
-            producingTransport.on('iceselectedtuplechange', (state)=>console.log("$$$$$$$$$$$$ICE selected producing transport state changed ", state));
             producingTransport.on('icestatechange', (state)=>console.log("$$$$$$$$$$$$ICE producing transport state changed ", state));
             producingTransport.on('dtlsstatechange', (state)=>console.log("$$$$$$$$$$$$DTLS producing transport state changed ", state));
 
@@ -152,13 +152,7 @@ export class callRoom {
     async connectSendTransport(socket: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>, senderTransportDTLSParameters: types.DtlsParameters ){
         const participant = this.participants.find(elt => elt.socketId === socket.id);
         if (participant && participant.producingTransport) {
-            const statsBefore = await participant.producingTransport.getStats();
-            console.log("$$$$$$$$$$$ status before", statsBefore)
-
             await participant.producingTransport.connect({dtlsParameters: senderTransportDTLSParameters});
-            const statsAfter = await participant.producingTransport.getStats();
-            console.log("$$$$$$$$$$$ status after", statsAfter);
-            console.log("ice candidates ", participant.producingTransport.iceCandidates);
             return {message: "connected successfully."};
         }
         else{
