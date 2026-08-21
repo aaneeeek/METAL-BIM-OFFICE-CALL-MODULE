@@ -102,6 +102,10 @@ io.on("connection", async (socket)=>{
                 await callObject.configureNewSockets(socket);
             });
 
+            socket.on("message", (message)=>{
+                socket.to(roomId).emit("message", message, socket.id);
+            });
+
             socket.on("disconnect", ()=>{
                 const index = callObject.participants.findIndex(elt=> elt.socketId === socket.id);
                 if (index && index >= 0) {
